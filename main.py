@@ -4,8 +4,8 @@ import torch
 import contextlib
 # from flask import Flask, request
 
-# create the Flask app
-app = Flask(__name__)
+# # create the Flask app
+# app = Flask(__name__)
 
 
 # @app.route('/')
