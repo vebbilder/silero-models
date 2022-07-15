@@ -45,7 +45,7 @@ def query_example():
 
     template = fileid + '.mp3'
 
-    write_wave(path=f'static/wav/'+format(template),
+    write_wave(path='static/wav/' + template,
                audio=(audio * 32767).numpy().astype('int16'),
                sample_rate=sample_rate)
 
