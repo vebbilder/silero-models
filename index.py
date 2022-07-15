@@ -1,163 +1,107 @@
-# pip install torch==1.9
 import torch
-from yoficator import yo
-from scipy.io.wavfile import write
-import numpy, re
-from pygame import mixer
-mixer.init(16000)
+import socket
+import urllib.parse
+import array
 import wave
-import time, os
-# https://github.com/Desklop/StressRNN
-from stressrnn import StressRNN
-from normalizer import Normalizer
-from transliterate import translit, get_available_language_codes
-import numtext
-import threading
 
-# Отдельная функция-заготовка для вынесения 
-# последующих функций в отдельный поток
-def thread(my_func):
-    def wrapper(*args, **kwargs):
-        my_thread = threading.Thread(target=my_func, args=args, kwargs=kwargs)
-        my_thread.start()
-    return wrapper
+# TCP Server configuration
+ListenPort = 8021
+Host = ''
 
-norm = Normalizer()
-stress_rnn = StressRNN()
-os.environ['TORCH_HOME'] = 'silero'
+def HTTPReadLine(sock):
+	str = b""
 
+	while True:
+		try:
+			chunk = sock.recv(1)
+		except ConnectionResetError:
+			return None
 
-def transl(text):
-    text=text.lower()
-    s_rus=translit(text, 'ru')
-    s_rus=s_rus.replace('w','в')
-    return(s_rus)
+		if chunk == b'\n':
+			return str.decode().strip()
+		if not chunk:
+			return None
 
-def float_to_int(wav):
-  wav *= 32767
-  wav = wav.astype('int16')
-  return wav
-
-language = 'ru'
-speaker = 'kseniya_16khz'
-torch.set_num_threads(6)
-device = torch.device('cpu')
-model, symbols, sample_rate, example_text, apply_tts = torch.hub.load(repo_or_dir='snakers4/silero-models',
-                                                                      model='silero_tts',
-                                                                      language=language,
-                                                                      speaker=speaker)
-model = model.to(device)  # gpu or cpu
-
-def createwav(text, wavname):
-    audio = apply_tts(texts=[text],
-                  model=model,
-                  sample_rate=sample_rate,
-                  symbols=symbols,
-                  device=device)
-    for i, _audio in enumerate(audio):
-        write(wavname, rate=16000, data=float_to_int(_audio.numpy()))
-
-def delstress(text):
-    text=text.lower()
-    m=['б','й','в','г','д','ж','з','к','л','м','н','п','р','с','т','ф','х','ц','ч','ш','щ','ъ','ь']
-    for xx in m:
-        text=text.replace('+'+xx, xx)
-    mas=text.strip().split(' ')
-    if(mas[-1].count('+') > 1 and text[-2]=='+'):
-        text=text[:-2]+text[-1]
-        
-    gl=['а','у','е','ы','а','о','э','я','и','ю','ё']
-    mas=text.strip().split(' ')
-    text2=''
-    for z in mas:
-        flag=0
-        for r in z:
-            if r in gl:
-                flag=flag+1     
-        if(flag==1 and not '+' in z):
-            for r in gl:
-                z=z.replace(r,'+'+r)
-        text2=text2+z+' '
-    text=text2+'.'
-    return text
-    
-
-def sayit(text):
-    stressed_text = norm.norm_text(text)
-    stressed_text = stress_rnn.put_stress(text, stress_symbol='+', accuracy_threshold=0.75, replace_similar_symbols=True)
-    mas=stressed_text.split('+')
-    stressed_text2=''
-    for x in mas:
-      try:
-          if(x!=''):
-              s=x[:-1]+'+'+x[-1]
-          else:
-              s=x
-          stressed_text2=stressed_text2+s
-      except:
-          pass
-    stressed_text2=(delstress(stressed_text2))
-    createwav(stressed_text2+'.', 'static/wav/'+re.sub('[^А-Яа-я]', '', text)+'.wav')
+		str = str + chunk
 
 
-    
-def playit(text):
-    if(os.path.exists('static/wav/'+re.sub('[^А-Яа-я]', '', text)+'.wav')):
-        s=mixer.Sound('static/wav/'+re.sub('[^А-Яа-я]', '', text)+'.wav')
-        sek=s.get_length()
-        s.play()
-        time.sleep(sek)
-        time.sleep(0.1)
-    
-def getpr(t):
-    t=t.strip()
-    t=t.replace('\n','. ')
-    t=t.replace('\t','')
-    t=t.replace('\r','. ')
-    t=t.replace(';','. ')
-    t=t.replace(',', '. ')
-    t=t.replace(':', '. ')
-    t=t.replace(' - ', '. ')
-    t=t.replace('..','.')
-    # Делим текст на массив предложений
-    mas=re.split("\\b[.!?\\n]+(?=\\s)", t)
-    return mas
+device = torch.device("cpu")
+torch.set_num_threads(2)
+file = "v3_1_ru.pt"
 
-@thread
-def saybigtext(text):
-    text=numtext.getnumbers(text)
-    text=transl(text)
-    text=yo(text)
-    mas=getpr(text)
-    for x in mas:
-        if(len(x.strip())>1):
-            sayit(x)
-    return ''
+model = torch.package.PackageImporter(file).load_pickle("tts_models", "model")
+model.to(device)
 
-def saybigtext2(text):
-    text=numtext.getnumbers(text)
-    text=transl(text)
-    text=yo(text)
-    mas=getpr(text)
-    for x in mas:
-        if(len(x.strip())>1):
-            print(x)
-            playit(x)
-    return ''
+MainSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+MainSocket.bind((Host, ListenPort))
+MainSocket.listen(0)
 
-def saybook(filename):
-    f=open(filename, 'r', encoding='UTF-8')
-    x=f.read()
-    saybigtext(x)
-    time.sleep(2)
-    saybigtext2(x)
+# A wrapper that makes it possible to write .wav into a socket
+# You can validate the total number of bytes written by adding a print here
+class wrapsock():
+	def __init__(self, sock):
+		self.sock = sock
 
-saybook('book.txt')
+	def write(self, data):
+		self.sock.sendall(data)
 
-mixer.quit
+	def flush(self):
+		pass # Pray
 
+# Removes dependency on numpy
+def tensor_to_int16array(tensor):
+	return array.array("h", tensor.to(dtype=torch.int16))
 
+# Options
+# Sample rate: [8000, 24000, 48000]
+# Speakers: ["aidar", "baya", "kseniya", "xenia", "random"]
+sample_rate = 48000
+speaker = "xenia"
 
+while True:
+	print("Waiting for connections...")
+	Client, Addr = MainSocket.accept()
+	print("New connection!")
 
+	while Client:
+		Request = HTTPReadLine(Client)
 
+		if Request == None:
+			print("Disconnected")
+			break
 
+		Method, URL, Version = Request.split(" ")
+		Text = urllib.parse.unquote(URL)[1:]
+		print("Synthesize [" + Text + "]")
+
+		# We support Keep-Alive so we have to read all the pending data
+		while HTTPReadLine(Client) != '':
+			pass
+
+		try:
+			audio = model.apply_tts(text=Text, sample_rate=sample_rate, speaker=speaker)
+
+			# In order to do Keep-Alive, having Content-Length is mandatory
+			# WAV header will always be 44 bytes, as derived from the source code of the wave module
+			# And the audio is 16 bit, so we multiply by 2
+			size = 44 + len(audio) * 2
+			header = "Content-Length: " + str(size) + "\r\n"
+
+			Client.send(b"HTTP/1.1 200 OK\r\n")
+			Client.send(header.encode())
+			Client.send(b"\r\n")
+
+			ws = wrapsock(Client)
+
+			wf = wave.open(ws, "wb")
+			wf.setnchannels(1)
+			wf.setsampwidth(2)
+			wf.setframerate(sample_rate)
+			wf.writeframes( tensor_to_int16array(audio*32767) )
+			wf.close()
+		except BrokenPipeError:
+			print("Abrupt disconnect")
+			break
+		except (ValueError, Exception):
+			print("Failed to synthesize that!")
+			Client.send(b"HTTP/1.1 500 Internal server error\r\n\r\n")
