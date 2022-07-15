@@ -54,7 +54,7 @@ def query_example():
       <source
         src="{}"
         type="audio/mpeg"
-      />'''.format(os.path.join(app.root_path, 'static/wav/', id + '.mp3'))
+      />'''.format(os.path.join(app.root_path, 'static/wav/', fileid + '.mp3'))
 
 
 @app.route('/form-example')
