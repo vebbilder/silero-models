@@ -2,17 +2,17 @@ import os
 import wave
 import torch
 import contextlib
-# from flask import Flask, request
+from flask import Flask, request
 
-# # create the Flask app
-# app = Flask(__name__)
+# create the Flask app
+app = Flask(__name__)
 
 
-# @app.route('/')
-# def query_example():
-#     # if key doesn't exist, returns None
-#     language = request.args.get('text')
-#     id = request.args.get('id')
+@app.route('/')
+def query_example():
+    # if key doesn't exist, returns None
+    language = request.args.get('text')
+    id = request.args.get('id')
 
     device = torch.device('cpu')
     torch.set_num_threads(4)
@@ -25,7 +25,7 @@ import contextlib
     model = torch.package.PackageImporter(local_file).load_pickle("tts_models", "model")
     model.to(device)
 
-    example_text = 'текст'
+    example_text = format(language)
     sample_rate = 48000
     speaker = 'aidar'
 
@@ -43,8 +43,30 @@ import contextlib
             wf.setframerate(sample_rate)
             wf.writeframes(audio)
 
-    write_wave(path=f'test.mp3',
+    write_wave(path=f'static/wav/'+id+'.mp3',
                audio=(audio * 32767).numpy().astype('int16'),
                sample_rate=sample_rate)
 
     print(model.speakers)
+
+    return '''
+    <audio controls>
+      <source
+        src="{}"
+        type="audio/mpeg"
+      />'''.format(os.path.join(app.root_path, 'static/wav/', id+'.mp3'))
+
+
+@app.route('/form-example')
+def form_example():
+    return 'Form Data Example'
+
+
+@app.route('/json-example')
+def json_example():
+    return 'JSON Object Example'
+
+
+if __name__ == '__main__':
+    # run app in debug mode on port 5000
+    app.run(debug=True, port=2000)
