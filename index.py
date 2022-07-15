@@ -7,23 +7,22 @@ from flask import Flask, request
 # create the Flask app
 app = Flask(__name__)
 
+device = torch.device('cpu')
+torch.set_num_threads(4)
+local_file = 'model.pt'
+
+if not os.path.isfile(local_file):
+    torch.hub.download_url_to_file('https://models.silero.ai/models/tts/ru/v3_1_ru.pt',
+                                   local_file)
+
+model = torch.package.PackageImporter(local_file).load_pickle("tts_models", "model")
+model.to(device)
+
 
 @app.route('/')
 def query_example():
     # if key doesn't exist, returns None
     language = request.args.get('text')
-
-    device = torch.device('cpu')
-    torch.set_num_threads(4)
-    local_file = 'model.pt'
-
-    if not os.path.isfile(local_file):
-        torch.hub.download_url_to_file('https://models.silero.ai/models/tts/ru/v3_1_ru.pt',
-                                       local_file)
-
-    model = torch.package.PackageImporter(local_file).load_pickle("tts_models", "model")
-    model.to(device)
-
     fileid = request.args.get('id')
     example_text = format(language)
     sample_rate = 48000
