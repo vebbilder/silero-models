@@ -42,8 +42,8 @@ def query_example():
             wf.setframerate(sample_rate)
             wf.writeframes(audio)
 
-    templ = fileid + '.mp3'
-    write_wave(path=f'static/wav/' + format(templ),
+    templ = 'static/wav/' + fileid + '.mp3'
+    write_wave(path=format(templ),
                audio=(audio * 32767).numpy().astype('int16'),
                sample_rate=sample_rate)
 
