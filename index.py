@@ -43,7 +43,7 @@ def query_example():
             wf.setframerate(sample_rate)
             wf.writeframes(audio)
 
-    write_wave(path=f'static/wav/' + fileid + '.mp3',
+    write_wave(path=f'static/wav/'+fileid+'.mp3',
                audio=(audio * 32767).numpy().astype('int16'),
                sample_rate=sample_rate)
 
@@ -54,7 +54,7 @@ def query_example():
       <source
         src="{}"
         type="audio/mpeg"
-      />'''.format(os.path.join(app.root_path, 'static/wav/', fileid + '.mp3'))
+      />'''.format(os.path.join(app.root_path, 'static/wav/', fileid+'.mp3'))
 
 
 @app.route('/form-example')
