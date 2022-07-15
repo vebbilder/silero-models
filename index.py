@@ -45,7 +45,7 @@ def query_example():
 
     template = fileid + '.mp3'
 
-    write_wave(path=f'static/wav/'+template,
+    write_wave(path=f'static/wav/'+format(template),
                audio=(audio * 32767).numpy().astype('int16'),
                sample_rate=sample_rate)
 
@@ -56,7 +56,7 @@ def query_example():
       <source
         src="{}"
         type="audio/mpeg"
-      />'''.format(os.path.join(app.root_path, 'static/wav/', template ))
+      />'''.format(os.path.join(app.root_path, 'static/wav/', format(template)))
 
 
 @app.route('/form-example')
