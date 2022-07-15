@@ -12,7 +12,6 @@ app = Flask(__name__)
 def query_example():
     # if key doesn't exist, returns None
     language = request.args.get('text')
-    id = request.args.get('id')
 
     device = torch.device('cpu')
     torch.set_num_threads(4)
@@ -25,6 +24,7 @@ def query_example():
     model = torch.package.PackageImporter(local_file).load_pickle("tts_models", "model")
     model.to(device)
 
+    fileid = request.args.get('id')
     example_text = format(language)
     sample_rate = 48000
     speaker = 'aidar'
@@ -43,7 +43,7 @@ def query_example():
             wf.setframerate(sample_rate)
             wf.writeframes(audio)
 
-    write_wave(path=f'static/wav/'+id+'.mp3',
+    write_wave(path=f'static/wav/' + fileid + '.mp3',
                audio=(audio * 32767).numpy().astype('int16'),
                sample_rate=sample_rate)
 
@@ -54,7 +54,7 @@ def query_example():
       <source
         src="{}"
         type="audio/mpeg"
-      />'''.format(os.path.join(app.root_path, 'static/wav/', id+'.mp3'))
+      />'''.format(os.path.join(app.root_path, 'static/wav/', id + '.mp3'))
 
 
 @app.route('/form-example')
